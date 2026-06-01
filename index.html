@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanSat Ground Control Software</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js for real-time graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- Leaflet for GPS mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- html2canvas for graph export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- TOP CONTROL BAR -->
+        <div class="top-control-bar">
+            <h1>CanSat Ground Control Software</h1>
+            <div class="button-group">
+                <button id="startBtn" class="btn btn-start">Start Telemetry</button>
+                <button id="stopBtn" class="btn btn-stop" disabled>Stop Telemetry</button>
+                <button id="exportCsvBtn" class="btn btn-export">Export CSV</button>
+                <button id="exportGraphBtn" class="btn btn-export">Export Graph as PNG</button>
+                <button id="syncTimeBtn" class="btn btn-sync">Sync PC Time</button>
+                <button id="resetPacketBtn" class="btn btn-reset">Reset Packet Count</button>
+            </div>
+            <div id="pcTime" class="pc-time">PC Time: 00:00:00</div>
+        </div>
+
+        <!-- MAIN DASHBOARD GRID -->
+        <div class="dashboard">
+            <!-- MISSION CONTROL PANEL -->
+            <section class="dashboard-section mission-control">
+                <h2>Mission Control Panel</h2>
+                <div class="mission-buttons">
+                    <button id="separationBtn" class="btn btn-mission">Manual Separation</button>
+                    <button id="parachuteBtn" class="btn btn-mission">Emergency Parachute</button>
+                    <button id="redundantBtn" class="btn btn-mission">Redundant Activation</button>
+                </div>
+                <div id="missionLog" class="mission-log">
+                    <p style="color: #999;">Mission commands will appear here...</p>
+                </div>
+            </section>
+
+            <!-- CONTAINER TELEMETRY -->
+            <section class="dashboard-section telemetry-section">
+                <h2>Container Telemetry</h2>
+                <div class="telemetry-grid">
+                    <div class="telemetry-item">
+                        <label>Mission Time (s)</label>
+                        <div id="missionTime" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Packet Count</label>
+                        <div id="packetCount" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Altitude (m)</label>
+                        <div id="altitude" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Pressure (hPa)</label>
+                        <div id="pressure" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Temperature (°C)</label>
+                        <div id="temperature" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Battery Voltage (V)</label>
+                        <div id="battery" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>GPS Latitude</label>
+                        <div id="latitude" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>GPS Longitude</label>
+                        <div id="longitude" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Descent Rate (m/s)</label>
+                        <div id="descentRate" class="telemetry-value">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAYLOAD TELEMETRY -->
+            <section class="dashboard-section telemetry-section">
+                <h2>Payload Telemetry</h2>
+                <div class="telemetry-grid">
+                    <div class="telemetry-item">
+                        <label>Payload Altitude (m)</label>
+                        <div id="payloadAltitude" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Payload Temperature (°C)</label>
+                        <div id="payloadTemp" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Payload Battery (V)</label>
+                        <div id="payloadBattery" class="telemetry-value">0</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <label>Payload Status</label>
+                        <div id="payloadStatus" class="telemetry-value">Nominal</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ERROR CODE SYSTEM -->
+            <section class="dashboard-section error-section">
+                <h2>Error Code System</h2>
+                <div class="error-code-display">
+                    <div class="error-code-value" id="errorCode">0000</div>
+                    <p class="error-description">Digit 1: Descent Rate | Digit 2: GPS | Digit 3: Separation | Digit 4: Parachute</p>
+                </div>
+                <div class="error-explanation">
+                    <div class="error-digit">
+                        <label>Digit 1: Descent Rate</label>
+                        <p id="digit1Msg">0 = Safe (8-10 m/s)</p>
+                    </div>
+                    <div class="error-digit">
+                        <label>Digit 2: GPS Status</label>
+                        <p id="digit2Msg">0 = Available</p>
+                    </div>
+                    <div class="error-digit">
+                        <label>Digit 3: Separation</label>
+                        <p id="digit3Msg">0 = Separated</p>
+                    </div>
+                    <div class="error-digit">
+                        <label>Digit 4: Parachute</label>
+                        <p id="digit4Msg">0 = Inactive</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ORIENTATION VISUALIZATION -->
+            <section class="dashboard-section orientation-section">
+                <h2>Orientation Visualization</h2>
+                <div class="orientation-container">
+                    <div id="orientationBox" class="orientation-box"></div>
+                </div>
+                <div class="orientation-values">
+                    <div class="orientation-item">
+                        <label>Roll (°)</label>
+                        <div id="rollValue">0</div>
+                    </div>
+                    <div class="orientation-item">
+                        <label>Pitch (°)</label>
+                        <div id="pitchValue">0</div>
+                    </div>
+                    <div class="orientation-item">
+                        <label>Yaw (°)</label>
+                        <div id="yawValue">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- REAL-TIME GRAPHS -->
+            <section class="dashboard-section graphs-section">
+                <h2>Real-Time Graphs</h2>
+                <div class="graphs-container">
+                    <div class="graph-item">
+                        <canvas id="altitudeChart"></canvas>
+                    </div>
+                    <div class="graph-item">
+                        <canvas id="pressureChart"></canvas>
+                    </div>
+                    <div class="graph-item">
+                        <canvas id="temperatureChart"></canvas>
+                    </div>
+                    <div class="graph-item">
+                        <canvas id="descentChart"></canvas>
+                    </div>
+                    <div class="graph-item">
+                        <canvas id="batteryChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GPS TRACKING MAP -->
+            <section class="dashboard-section map-section">
+                <h2>GPS Tracking Map</h2>
+                <div id="map" class="map"></div>
+                <div class="map-info">
+                    <p>Current Coordinates: <span id="mapCoords">20.2961°N, 85.8245°E</span></p>
+                </div>
+            </section>
+
+            <!-- LIVE VIDEO STREAM -->
+            <section class="dashboard-section video-section">
+                <h2>Live Video Stream</h2>
+                <div class="video-controls">
+                    <select id="cameraSelect" class="camera-dropdown">
+                        <option value="">Select Camera</option>
+                    </select>
+                    <button id="startCameraBtn" class="btn btn-camera">Start Camera</button>
+                    <button id="stopCameraBtn" class="btn btn-camera" disabled>Stop Camera</button>
+                    <span id="streamStatus" class="stream-status">Offline</span>
+                </div>
+                <div class="video-container">
+                    <video id="videoStream" autoplay playsinline muted></video>
+                    <p id="videoPlaceholder" class="video-placeholder">Camera feed will appear here</p>
+                </div>
+                <div id="cameraError" class="camera-error"></div>
+            </section>
+
+            <!-- TELEMETRY LOGS -->
+            <section class="dashboard-section logs-section">
+                <h2>Telemetry Logs</h2>
+                <div class="logs-table-container">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Altitude (m)</th>
+                                <th>Temperature (°C)</th>
+                                <th>Pressure (hPa)</th>
+                                <th>Battery (V)</th>
+                                <th>Descent Rate (m/s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
